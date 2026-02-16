@@ -31,3 +31,6 @@ Thumbs.db
 .cursor/rules/basic
 Stock/programs/夕食作り
 scripts
+
+# Cloud Sign 署名データ（プロジェクトごとにローカル管理）
+.signatures/

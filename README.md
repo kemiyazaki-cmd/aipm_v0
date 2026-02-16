@@ -1029,7 +1029,68 @@ A7. 最適な結果を得るためのヒント：
 
 
 
-## 11. 開発Tips
+## 11. クラウドサイン（電子署名・承認）
+
+### 概要
+
+`cloud_sign.sh` は、AIPMシステムのFlow→Stockワークフローと連携するドキュメント電子署名・承認ツールです。ドキュメントのSHA256ハッシュベースの署名により、文書の完全性（改ざん検知）と承認記録の管理を実現します。
+
+### 主な機能
+
+| 機能 | コマンド | 説明 |
+|------|---------|------|
+| 署名 | `./cloud_sign.sh sign <file>` | ドキュメントに電子署名する |
+| 検証 | `./cloud_sign.sh verify <file>` | 署名の整合性を検証する |
+| ステータス | `./cloud_sign.sh status <file>` | 署名ステータスを表示する |
+| 一覧 | `./cloud_sign.sh list` | 署名済みドキュメント一覧 |
+| 承認 | `./cloud_sign.sh approve <file>` | ドキュメントを承認する |
+| 取り消し | `./cloud_sign.sh revoke <file>` | 署名を取り消す |
+| ログ | `./cloud_sign.sh log` | 署名ログを表示する |
+
+### ワークフロー
+
+```
+1. ドラフト作成 → Flow/YYYYMM/YYYY-MM-DD/draft_xxx.md
+2. レビュー・編集
+3. 署名:    ./cloud_sign.sh sign draft_xxx.md --signer "田中"
+4. 検証:    ./cloud_sign.sh verify draft_xxx.md
+5. 承認:    ./cloud_sign.sh approve draft_xxx.md --signer "佐藤"
+6. 確定反映: 「確定反映して」でStockフォルダへ移動
+```
+
+### 使用例
+
+```bash
+# ドキュメントに署名
+./cloud_sign.sh sign Flow/202602/2026-02-16/draft_project_charter.md --signer "宮田"
+
+# 署名を検証（ドキュメントが変更されていないか確認）
+./cloud_sign.sh verify Flow/202602/2026-02-16/draft_project_charter.md
+
+# 署名ステータスを確認
+./cloud_sign.sh status Flow/202602/2026-02-16/draft_project_charter.md
+
+# ドキュメントを承認
+./cloud_sign.sh approve Flow/202602/2026-02-16/draft_project_charter.md --signer "PM太郎"
+
+# 署名済みドキュメントの一覧
+./cloud_sign.sh list
+
+# 署名ログを表示
+./cloud_sign.sh log --limit 10
+```
+
+### 署名データの保存場所
+
+署名記録は `.signatures/` ディレクトリにYAML形式で保存されます。このディレクトリはプロジェクトごとにローカルで管理され、`.gitignore` で除外されています。
+
+署名記録ファイルには以下の情報が含まれます：
+- ドキュメントのパスとファイル名
+- SHA256ハッシュ（署名時点のドキュメント内容のフィンガープリント）
+- 署名者名と署名日時
+- 承認ステータス（pending / approved / revoked）
+
+## 12. 開発Tips
 
 このワークスペースは単なるドキュメント管理だけでなく、開発活動自体もサポートする機能を備えています（※ベータ版/試験運用中）。
 
