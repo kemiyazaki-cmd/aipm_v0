@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Sign - AIPM電子署名</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1 class="logo">
+        <span class="logo-icon">&#9998;</span>
+        Cloud Sign
+      </h1>
+      <p class="subtitle">AIPM ドキュメント電子署名・承認システム</p>
+    </div>
+  </header>
+
+  <nav>
+    <button class="nav-btn active" data-tab="documents">ドキュメント</button>
+    <button class="nav-btn" data-tab="logs">署名ログ</button>
+  </nav>
+
+  <main>
+    <!-- ドキュメント一覧タブ -->
+    <section id="tab-documents" class="tab-content active">
+      <!-- アップロードエリア -->
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">&#128196;</div>
+        <p>ドキュメントをドラッグ&ドロップ<br>またはクリックしてファイルを選択</p>
+        <input type="file" id="fileInput" hidden>
+      </div>
+
+      <!-- ドキュメント一覧 -->
+      <div class="doc-list" id="docList">
+        <p class="empty-message" id="emptyMessage">ドキュメントがありません。ファイルをアップロードしてください。</p>
+      </div>
+    </section>
+
+    <!-- ログタブ -->
+    <section id="tab-logs" class="tab-content">
+      <div class="log-list" id="logList"></div>
+    </section>
+  </main>
+
+  <!-- 署名モーダル -->
+  <div class="modal-overlay" id="signModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">ドキュメントに署名</h2>
+        <button class="modal-close" id="modalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="doc-info" id="modalDocInfo"></div>
+        <div class="form-group">
+          <label for="signerName">署名者名</label>
+          <input type="text" id="signerName" placeholder="名前を入力してください">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-cancel" id="modalCancel">キャンセル</button>
+        <button class="btn btn-primary" id="modalConfirm">署名する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 詳細モーダル -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal modal-large">
+      <div class="modal-header">
+        <h2>ドキュメント詳細</h2>
+        <button class="modal-close" id="detailModalClose">&times;</button>
+      </div>
+      <div class="modal-body" id="detailModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-cancel" id="detailModalCancel">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通知 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

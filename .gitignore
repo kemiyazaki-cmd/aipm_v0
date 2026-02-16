@@ -34,3 +34,8 @@ scripts
 
 # Cloud Sign 署名データ（プロジェクトごとにローカル管理）
 .signatures/
+
+# Cloud Sign Webアプリ（ランタイムデータ）
+cloud_sign_app/node_modules/
+cloud_sign_app/data/
+cloud_sign_app/uploads/

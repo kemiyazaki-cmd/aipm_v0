@@ -1,0 +1,14 @@
+{
+  "name": "cloud-sign-app",
+  "version": "1.0.0",
+  "description": "AIPM クラウドサイン - ドキュメント電子署名・承認Webアプリ",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1"
+  }
+}
