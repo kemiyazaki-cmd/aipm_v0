@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Sign - AIPM電子署名</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: #f0f2f5; color: #1a1a2e; line-height: 1.6; min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #fff; padding: 24px 0; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+    .header-inner { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+    .logo { font-size: 28px; font-weight: 700; letter-spacing: 1px; }
+    .logo-icon { margin-right: 8px; }
+    .subtitle { font-size: 14px; opacity: 0.8; margin-top: 4px; }
+    nav { max-width: 960px; margin: 0 auto; padding: 16px 20px 0; display: flex; gap: 8px; }
+    .nav-btn {
+      padding: 10px 24px; border: none; background: transparent; color: #666;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      border-bottom: 3px solid transparent; transition: all 0.2s;
+    }
+    .nav-btn:hover { color: #0f3460; }
+    .nav-btn.active { color: #0f3460; border-bottom-color: #0f3460; }
+    main { max-width: 960px; margin: 0 auto; padding: 20px; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* アップロード */
+    .upload-area {
+      border: 2px dashed #c0c8d8; border-radius: 12px; padding: 40px;
+      text-align: center; cursor: pointer; transition: all 0.3s;
+      background: #fff; margin-bottom: 24px;
+    }
+    .upload-area:hover, .upload-area.dragover { border-color: #0f3460; background: #f0f4ff; }
+    .upload-icon { font-size: 48px; margin-bottom: 12px; }
+    .upload-area p { color: #888; font-size: 14px; }
+
+    /* カード */
+    .doc-list { display: flex; flex-direction: column; gap: 12px; }
+    .empty-message { text-align: center; color: #999; padding: 40px; }
+    .doc-card {
+      background: #fff; border-radius: 12px; padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06); transition: box-shadow 0.2s;
+    }
+    .doc-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .doc-card-header {
+      display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;
+    }
+    .doc-name { font-size: 16px; font-weight: 600; color: #1a1a2e; word-break: break-all; }
+    .doc-meta { display: flex; gap: 16px; font-size: 13px; color: #888; margin-bottom: 12px; flex-wrap: wrap; }
+
+    /* バッジ */
+    .badge {
+      display: inline-block; padding: 4px 12px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; white-space: nowrap;
+    }
+    .badge-unsigned { background: #eee; color: #888; }
+    .badge-pending { background: #fff3cd; color: #856404; }
+    .badge-approved { background: #d4edda; color: #155724; }
+    .badge-revoked { background: #f8d7da; color: #721c24; }
+
+    /* 署名チップ */
+    .sig-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .sig-chip {
+      display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px;
+      background: #e8f0fe; border-radius: 16px; font-size: 12px; color: #1967d2;
+    }
+    .sig-chip.revoked { background: #fce8e6; color: #c5221f; text-decoration: line-through; }
+
+    /* ボタン */
+    .doc-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .btn {
+      padding: 8px 16px; border: none; border-radius: 8px; font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: all 0.2s;
+    }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-sign { background: #1967d2; color: #fff; }
+    .btn-sign:hover:not(:disabled) { background: #1557b0; }
+    .btn-verify { background: #188038; color: #fff; }
+    .btn-verify:hover:not(:disabled) { background: #137333; }
+    .btn-approve { background: #e37400; color: #fff; }
+    .btn-approve:hover:not(:disabled) { background: #c96500; }
+    .btn-revoke { background: #c5221f; color: #fff; }
+    .btn-revoke:hover:not(:disabled) { background: #a31a17; }
+    .btn-detail { background: #5f6368; color: #fff; }
+    .btn-detail:hover { background: #4a4e51; }
+    .btn-delete { background: transparent; color: #c5221f; border: 1px solid #c5221f; }
+    .btn-delete:hover { background: #fce8e6; }
+    .btn-primary { background: #1967d2; color: #fff; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-cancel { background: #eee; color: #555; }
+    .btn-cancel:hover { background: #ddd; }
+
+    /* モーダル */
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff; border-radius: 16px; width: 90%; max-width: 480px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2); animation: modalIn 0.2s ease;
+    }
+    .modal-large { max-width: 640px; }
+    @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 20px 24px; border-bottom: 1px solid #eee;
+    }
+    .modal-header h2 { font-size: 18px; }
+    .modal-close {
+      background: none; border: none; font-size: 24px; cursor: pointer; color: #888; padding: 4px;
+    }
+    .modal-body { padding: 24px; max-height: 60vh; overflow-y: auto; }
+    .modal-footer {
+      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 16px 24px; border-top: 1px solid #eee;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #333; }
+    .form-group input {
+      width: 100%; padding: 10px 14px; border: 1px solid #ddd;
+      border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.2s;
+    }
+    .form-group input:focus { border-color: #1967d2; }
+    .doc-info {
+      background: #f7f8fa; border-radius: 8px; padding: 12px 16px;
+      margin-bottom: 16px; font-size: 14px;
+    }
+
+    /* 検証結果 */
+    .verify-result { padding: 16px; border-radius: 8px; margin-top: 12px; font-weight: 600; }
+    .verify-valid { background: #d4edda; color: #155724; }
+    .verify-invalid { background: #f8d7da; color: #721c24; }
+
+    /* ログ */
+    .log-list { display: flex; flex-direction: column; gap: 8px; }
+    .log-item {
+      background: #fff; border-radius: 8px; padding: 14px 18px;
+      display: flex; gap: 16px; align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04); font-size: 14px;
+    }
+    .log-action { font-weight: 700; min-width: 60px; }
+    .log-action.sign { color: #1967d2; }
+    .log-action.approve { color: #188038; }
+    .log-action.revoke { color: #c5221f; }
+    .log-action.upload { color: #5f6368; }
+    .log-action.delete { color: #c5221f; }
+    .log-signer { color: #333; font-weight: 600; min-width: 80px; }
+    .log-doc { color: #666; flex: 1; }
+    .log-time { color: #aaa; font-size: 12px; white-space: nowrap; }
+
+    /* 詳細 */
+    .detail-section { margin-bottom: 20px; }
+    .detail-section h3 {
+      font-size: 14px; color: #666; margin-bottom: 8px;
+      border-bottom: 1px solid #eee; padding-bottom: 4px;
+    }
+    .detail-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+    .detail-row .label { color: #888; }
+    .detail-row .value { font-weight: 600; word-break: break-all; }
+    .hash-value {
+      font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px;
+      background: #f5f5f5; padding: 8px 12px; border-radius: 4px; word-break: break-all; margin-top: 4px;
+    }
+
+    /* トースト */
+    .toast-container {
+      position: fixed; top: 20px; right: 20px; z-index: 2000;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .toast {
+      padding: 14px 20px; border-radius: 10px; color: #fff; font-size: 14px;
+      font-weight: 500; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards; max-width: 360px;
+    }
+    .toast-success { background: #188038; }
+    .toast-error { background: #c5221f; }
+    .toast-info { background: #1967d2; }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-10px); } }
+
+    /* レスポンシブ */
+    @media (max-width: 600px) {
+      .doc-card-header { flex-direction: column; gap: 8px; }
+      .doc-meta { flex-direction: column; gap: 4px; }
+      .doc-actions { flex-direction: column; }
+      .doc-actions .btn { width: 100%; text-align: center; }
+      .log-item { flex-direction: column; align-items: flex-start; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1 class="logo"><span class="logo-icon">&#9998;</span> Cloud Sign</h1>
+      <p class="subtitle">AIPM ドキュメント電子署名・承認システム</p>
+    </div>
+  </header>
+
+  <nav>
+    <button class="nav-btn active" data-tab="documents">ドキュメント</button>
+    <button class="nav-btn" data-tab="logs">署名ログ</button>
+  </nav>
+
+  <main>
+    <section id="tab-documents" class="tab-content active">
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">&#128196;</div>
+        <p>ドキュメントをドラッグ&ドロップ<br>またはクリックしてファイルを選択</p>
+        <input type="file" id="fileInput" hidden>
+      </div>
+      <div class="doc-list" id="docList">
+        <p class="empty-message">ドキュメントがありません。ファイルをアップロードしてください。</p>
+      </div>
+    </section>
+
+    <section id="tab-logs" class="tab-content">
+      <div class="log-list" id="logList"></div>
+    </section>
+  </main>
+
+  <!-- 署名モーダル -->
+  <div class="modal-overlay" id="signModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">ドキュメントに署名</h2>
+        <button class="modal-close" id="modalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="doc-info" id="modalDocInfo"></div>
+        <div class="form-group">
+          <label id="signerLabel" for="signerName">署名者名</label>
+          <input type="text" id="signerName" placeholder="名前を入力してください">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-cancel" id="modalCancel">キャンセル</button>
+        <button class="btn btn-primary" id="modalConfirm">署名する</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 詳細モーダル -->
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal modal-large">
+      <div class="modal-header">
+        <h2>ドキュメント詳細</h2>
+        <button class="modal-close" id="detailModalClose">&times;</button>
+      </div>
+      <div class="modal-body" id="detailModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-cancel" id="detailModalCancel">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // ════════════════════════════════════════════════
+    // LocalStorage ベースのデータストア
+    // ════════════════════════════════════════════════
+    const STORAGE_KEY_DOCS = 'cloudsign_documents';
+    const STORAGE_KEY_LOGS = 'cloudsign_logs';
+
+    function getDocuments() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY_DOCS)) || []; }
+      catch { return []; }
+    }
+    function saveDocuments(docs) { localStorage.setItem(STORAGE_KEY_DOCS, JSON.stringify(docs)); }
+    function getLogs() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY_LOGS)) || []; }
+      catch { return []; }
+    }
+    function saveLogs(logs) { localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs)); }
+
+    function appendLog(action, docId, docName, signer) {
+      const logs = getLogs();
+      logs.push({ id: crypto.randomUUID(), action, docId, docName, signer, timestamp: new Date().toISOString() });
+      saveLogs(logs);
+    }
+
+    // ════════════════════════════════════════════════
+    // SHA-256 ハッシュ（Web Crypto API）
+    // ════════════════════════════════════════════════
+    async function computeHash(arrayBuffer) {
+      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+      return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // ════════════════════════════════════════════════
+    // 状態
+    // ════════════════════════════════════════════════
+    let currentDocId = null;
+    let modalAction = null;
+
+    // ════════════════════════════════════════════════
+    // 初期化
+    // ════════════════════════════════════════════════
+    document.addEventListener('DOMContentLoaded', () => {
+      renderDocuments();
+      setupEventListeners();
+    });
+
+    function setupEventListeners() {
+      // タブ
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+          if (btn.dataset.tab === 'logs') renderLogs();
+        });
+      });
+
+      // アップロード
+      const uploadArea = document.getElementById('uploadArea');
+      const fileInput = document.getElementById('fileInput');
+      uploadArea.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', e => { if (e.target.files.length > 0) uploadFile(e.target.files[0]); });
+      uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+      uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+      uploadArea.addEventListener('drop', e => {
+        e.preventDefault(); uploadArea.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) uploadFile(e.dataTransfer.files[0]);
+      });
+
+      // モーダル
+      document.getElementById('modalClose').addEventListener('click', closeSignModal);
+      document.getElementById('modalCancel').addEventListener('click', closeSignModal);
+      document.getElementById('modalConfirm').addEventListener('click', handleModalConfirm);
+      document.getElementById('detailModalClose').addEventListener('click', closeDetailModal);
+      document.getElementById('detailModalCancel').addEventListener('click', closeDetailModal);
+      document.getElementById('signModal').addEventListener('click', e => { if (e.target.id === 'signModal') closeSignModal(); });
+      document.getElementById('detailModal').addEventListener('click', e => { if (e.target.id === 'detailModal') closeDetailModal(); });
+
+      // Enterキーでモーダル確定
+      document.getElementById('signerName').addEventListener('keydown', e => {
+        if (e.key === 'Enter') handleModalConfirm();
+      });
+    }
+
+    // ════════════════════════════════════════════════
+    // ファイルアップロード
+    // ════════════════════════════════════════════════
+    async function uploadFile(file) {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const hash = await computeHash(arrayBuffer);
+        // ArrayBuffer を Base64 で保存（LocalStorage用）
+        const base64 = arrayBufferToBase64(arrayBuffer);
+
+        const doc = {
+          id: crypto.randomUUID(),
+          name: file.name,
+          size: file.size,
+          mimeType: file.type || 'application/octet-stream',
+          uploadedAt: new Date().toISOString(),
+          currentHash: hash,
+          fileData: base64,
+          signatures: [],
+          approval: { status: 'unsigned', approvedAt: null, approvedBy: null }
+        };
+
+        const docs = getDocuments();
+        docs.push(doc);
+        saveDocuments(docs);
+        appendLog('UPLOAD', doc.id, doc.name, '');
+        showToast('「' + doc.name + '」をアップロードしました', 'success');
+        document.getElementById('fileInput').value = '';
+        renderDocuments();
+      } catch (e) {
+        showToast('アップロードに失敗しました: ' + e.message, 'error');
+      }
+    }
+
+    function arrayBufferToBase64(buffer) {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+      return btoa(binary);
+    }
+
+    function base64ToArrayBuffer(base64) {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes.buffer;
+    }
+
+    // ════════════════════════════════════════════════
+    // ドキュメント一覧描画
+    // ════════════════════════════════════════════════
+    function renderDocuments() {
+      const docs = getDocuments();
+      const docList = document.getElementById('docList');
+
+      if (docs.length === 0) {
+        docList.innerHTML = '<p class="empty-message">ドキュメントがありません。ファイルをアップロードしてください。</p>';
+        return;
+      }
+
+      docList.innerHTML = docs.map(doc => {
+        const badge = getStatusBadge(doc.approval.status);
+        const activeSigs = doc.signatures.filter(s => s.status === 'active');
+        const sigChips = doc.signatures.map(s =>
+          '<span class="sig-chip ' + (s.status === 'revoked' ? 'revoked' : '') + '">' + esc(s.name) + '</span>'
+        ).join('');
+        const date = new Date(doc.uploadedAt).toLocaleString('ja-JP');
+
+        return '<div class="doc-card" data-id="' + doc.id + '">' +
+          '<div class="doc-card-header"><span class="doc-name">' + esc(doc.name) + '</span>' + badge + '</div>' +
+          '<div class="doc-meta">' +
+            '<span>&#128197; ' + date + '</span>' +
+            '<span>&#128190; ' + formatSize(doc.size) + '</span>' +
+            (activeSigs.length > 0 ? '<span>&#9998; ' + activeSigs.length + '名が署名</span>' : '') +
+          '</div>' +
+          (sigChips ? '<div class="sig-list">' + sigChips + '</div>' : '') +
+          '<div class="doc-actions">' +
+            '<button class="btn btn-sign" onclick="openSignModal(\'' + doc.id + '\',\'sign\')">署名</button>' +
+            '<button class="btn btn-verify" onclick="verifyDoc(\'' + doc.id + '\')">検証</button>' +
+            '<button class="btn btn-approve" onclick="openSignModal(\'' + doc.id + '\',\'approve\')"' +
+              (doc.signatures.length === 0 ? ' disabled' : '') + '>承認</button>' +
+            '<button class="btn btn-detail" onclick="showDetail(\'' + doc.id + '\')">詳細</button>' +
+            '<button class="btn btn-delete" onclick="deleteDoc(\'' + doc.id + '\')">削除</button>' +
+          '</div></div>';
+      }).join('');
+    }
+
+    function getStatusBadge(status) {
+      const map = { unsigned: ['未署名','unsigned'], pending: ['署名済','pending'], approved: ['承認済','approved'], revoked: ['取消済','revoked'] };
+      const [label, cls] = map[status] || [status, 'unsigned'];
+      return '<span class="badge badge-' + cls + '">' + label + '</span>';
+    }
+
+    // ════════════════════════════════════════════════
+    // 署名
+    // ════════════════════════════════════════════════
+    function openSignModal(docId, action) {
+      currentDocId = docId;
+      modalAction = action;
+      const doc = getDocuments().find(d => d.id === docId);
+      if (!doc) return;
+
+      const titles = { sign: 'ドキュメントに署名', approve: 'ドキュメントを承認', revoke: '署名を取り消し' };
+      const labels = { sign: '署名者名', approve: '承認者名', revoke: '取消者名' };
+      const btns = { sign: '署名する', approve: '承認する', revoke: '取り消す' };
+
+      document.getElementById('modalTitle').textContent = titles[action];
+      document.getElementById('signerLabel').textContent = labels[action];
+      document.getElementById('modalConfirm').textContent = btns[action];
+      document.getElementById('modalDocInfo').innerHTML = '<strong>' + esc(doc.name) + '</strong>';
+      document.getElementById('signerName').value = '';
+      document.getElementById('signModal').classList.add('open');
+      setTimeout(() => document.getElementById('signerName').focus(), 100);
+    }
+
+    function closeSignModal() {
+      document.getElementById('signModal').classList.remove('open');
+      currentDocId = null; modalAction = null;
+    }
+
+    async function handleModalConfirm() {
+      const signer = document.getElementById('signerName').value.trim();
+      if (!signer) { showToast('名前を入力してください', 'error'); return; }
+
+      const docs = getDocuments();
+      const doc = docs.find(d => d.id === currentDocId);
+      if (!doc) { showToast('ドキュメントが見つかりません', 'error'); return; }
+
+      if (modalAction === 'sign') {
+        // 既に署名済みか
+        if (doc.signatures.find(s => s.name === signer && s.status === 'active')) {
+          showToast(signer + ' さんは既に署名済みです', 'error'); return;
+        }
+        // 現在のハッシュを再計算
+        const currentHash = await computeHash(base64ToArrayBuffer(doc.fileData));
+        doc.signatures.push({
+          id: crypto.randomUUID(), name: signer,
+          signedAt: new Date().toISOString(), sha256: currentHash, status: 'active'
+        });
+        doc.currentHash = currentHash;
+        if (doc.approval.status === 'unsigned') doc.approval.status = 'pending';
+        appendLog('SIGN', doc.id, doc.name, signer);
+        showToast('署名しました', 'success');
+
+      } else if (modalAction === 'approve') {
+        if (doc.signatures.filter(s => s.status === 'active').length === 0) {
+          showToast('有効な署名がありません', 'error'); return;
+        }
+        const currentHash = await computeHash(base64ToArrayBuffer(doc.fileData));
+        if (currentHash !== doc.currentHash) {
+          showToast('ドキュメントが変更されています。再署名してください', 'error'); return;
+        }
+        doc.approval.status = 'approved';
+        doc.approval.approvedAt = new Date().toISOString();
+        doc.approval.approvedBy = signer;
+        appendLog('APPROVE', doc.id, doc.name, signer);
+        showToast('承認しました', 'success');
+
+      } else if (modalAction === 'revoke') {
+        const sig = doc.signatures.find(s => s.name === signer && s.status === 'active');
+        if (!sig) { showToast(signer + ' さんの有効な署名が見つかりません', 'error'); return; }
+        sig.status = 'revoked';
+        doc.approval.status = 'revoked';
+        appendLog('REVOKE', doc.id, doc.name, signer);
+        showToast('署名を取り消しました', 'info');
+      }
+
+      saveDocuments(docs);
+      closeSignModal();
+      renderDocuments();
+    }
+
+    // ════════════════════════════════════════════════
+    // 検証
+    // ════════════════════════════════════════════════
+    async function verifyDoc(docId) {
+      const doc = getDocuments().find(d => d.id === docId);
+      if (!doc) return;
+
+      const currentHash = await computeHash(base64ToArrayBuffer(doc.fileData));
+      const isValid = currentHash === doc.currentHash;
+
+      const card = document.querySelector('.doc-card[data-id="' + docId + '"]');
+      const existing = card.querySelector('.verify-result');
+      if (existing) existing.remove();
+
+      const div = document.createElement('div');
+      div.className = 'verify-result ' + (isValid ? 'verify-valid' : 'verify-invalid');
+      div.textContent = isValid
+        ? '[ VALID ] 署名は有効です - ドキュメントは変更されていません'
+        : '[ INVALID ] 署名は無効です - ドキュメントが変更されています';
+      card.appendChild(div);
+      setTimeout(() => div.remove(), 5000);
+    }
+
+    // ════════════════════════════════════════════════
+    // 削除
+    // ════════════════════════════════════════════════
+    function deleteDoc(docId) {
+      const docs = getDocuments();
+      const doc = docs.find(d => d.id === docId);
+      if (!doc) return;
+      if (!confirm('「' + doc.name + '」を削除しますか？')) return;
+
+      const updated = docs.filter(d => d.id !== docId);
+      saveDocuments(updated);
+      appendLog('DELETE', doc.id, doc.name, '');
+      showToast('ドキュメントを削除しました', 'info');
+      renderDocuments();
+    }
+
+    // ════════════════════════════════════════════════
+    // 詳細モーダル
+    // ════════════════════════════════════════════════
+    async function showDetail(docId) {
+      const doc = getDocuments().find(d => d.id === docId);
+      if (!doc) return;
+
+      const currentHash = await computeHash(base64ToArrayBuffer(doc.fileData));
+      const isValid = currentHash === doc.currentHash;
+
+      const body = document.getElementById('detailModalBody');
+      body.innerHTML =
+        '<div class="detail-section"><h3>ドキュメント情報</h3>' +
+          '<div class="detail-row"><span class="label">ファイル名</span><span class="value">' + esc(doc.name) + '</span></div>' +
+          '<div class="detail-row"><span class="label">サイズ</span><span class="value">' + formatSize(doc.size) + '</span></div>' +
+          '<div class="detail-row"><span class="label">アップロード日時</span><span class="value">' + new Date(doc.uploadedAt).toLocaleString('ja-JP') + '</span></div>' +
+          '<div class="detail-row"><span class="label">SHA256</span></div>' +
+          '<div class="hash-value">' + doc.currentHash + '</div>' +
+        '</div>' +
+        '<div class="detail-section"><h3>整合性チェック</h3>' +
+          '<div class="verify-result ' + (isValid ? 'verify-valid' : 'verify-invalid') + '">' +
+            (isValid ? '[ VALID ] 変更なし' : '[ INVALID ] 署名後に変更あり') +
+          '</div>' +
+        '</div>' +
+        '<div class="detail-section"><h3>承認ステータス</h3>' +
+          '<div class="detail-row"><span class="label">ステータス</span><span class="value">' + getStatusBadge(doc.approval.status) + '</span></div>' +
+          (doc.approval.approvedBy ?
+            '<div class="detail-row"><span class="label">承認者</span><span class="value">' + esc(doc.approval.approvedBy) + '</span></div>' +
+            '<div class="detail-row"><span class="label">承認日時</span><span class="value">' + new Date(doc.approval.approvedAt).toLocaleString('ja-JP') + '</span></div>'
+          : '') +
+        '</div>' +
+        '<div class="detail-section"><h3>署名一覧 (' + doc.signatures.length + '件)</h3>' +
+          (doc.signatures.length === 0 ? '<p style="color:#999;font-size:14px;">まだ署名されていません</p>' :
+            doc.signatures.map(s =>
+              '<div class="detail-row"><span class="label"><span class="sig-chip ' + (s.status === 'revoked' ? 'revoked' : '') + '">' + esc(s.name) + '</span></span>' +
+              '<span class="value" style="font-size:13px;">' + new Date(s.signedAt).toLocaleString('ja-JP') + '</span></div>'
+            ).join('')) +
+        '</div>' +
+        (doc.signatures.filter(s => s.status === 'active').length > 0 ?
+          '<button class="btn btn-revoke" onclick="closeDetailModal();openSignModal(\'' + doc.id + '\',\'revoke\')">署名を取り消す</button>'
+        : '');
+
+      document.getElementById('detailModal').classList.add('open');
+    }
+
+    function closeDetailModal() { document.getElementById('detailModal').classList.remove('open'); }
+
+    // ════════════════════════════════════════════════
+    // ログ描画
+    // ════════════════════════════════════════════════
+    function renderLogs() {
+      const logs = getLogs().slice().reverse().slice(0, 50);
+      const logList = document.getElementById('logList');
+      if (logs.length === 0) {
+        logList.innerHTML = '<p class="empty-message">ログはまだありません</p>'; return;
+      }
+      const actionLabels = { SIGN: ['署名','sign'], APPROVE: ['承認','approve'], REVOKE: ['取消','revoke'], UPLOAD: ['登録','upload'], DELETE: ['削除','delete'] };
+      logList.innerHTML = logs.map(log => {
+        const [label, cls] = actionLabels[log.action] || [log.action, ''];
+        return '<div class="log-item">' +
+          '<span class="log-action ' + cls + '">' + label + '</span>' +
+          '<span class="log-signer">' + esc(log.signer || '-') + '</span>' +
+          '<span class="log-doc">' + esc(log.docName) + '</span>' +
+          '<span class="log-time">' + new Date(log.timestamp).toLocaleString('ja-JP') + '</span></div>';
+      }).join('');
+    }
+
+    // ════════════════════════════════════════════════
+    // ユーティリティ
+    // ════════════════════════════════════════════════
+    function showToast(msg, type) {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = 'toast toast-' + (type || 'info');
+      t.textContent = msg;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      const d = document.createElement('div'); d.textContent = str; return d.innerHTML;
+    }
+  </script>
+</body>
+</html>
